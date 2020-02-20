@@ -1,0 +1,53 @@
+# Create a build agent that runs on Azure
+# refer to https://docs.microsoft.com/en-us/learn/modules/host-build-agent/index
+
+# Create a Linux virtual machine
+az vm create \
+    --name MGLOSelfAgent-01 \
+    --resource-group "DevOps-CICD" \
+    --image Canonical:UbuntuServer:16.04-LTS:latest \
+    --location westus2 \
+    --size Standard_DS2_v2 \
+    --admin-username ck \
+    --generate-ssh-keys
+#  --------   Create the agent pool / personal access token in Azure DevOps (manual)
+#  connected to your VM over SSH.
+IPADDRESS=$(az vm show \
+  --name MyLinuxAgent \
+  --resource-group "Kan_Chen" \
+  --show-details \
+  --query [publicIps] \
+  --output tsv)    
+
+  ssh azureuser@$IPADDRESS
+
+# nstall build tools on your VM
+#   ` in VM,  Install build tools on your VM
+sudo apt-get update
+
+curl https://raw.githubusercontent.com/MicrosoftDocs/mslearn-azure-pipelines-build-agent/master/build-tools.sh > build-tools.sh
+
+cat build-tools.sh
+
+chmod u+x build-tools.sh
+
+sudo ./build-tools.sh
+
+# ----------   Install agent software on your VM
+
+curl https://raw.githubusercontent.com/MicrosoftDocs/mslearn-azure-pipelines-build-agent/master/build-agent.sh > build-agent.sh
+
+cat build-agent.sh
+
+# Set these environment variables:
+
+# AZP_AGENT_VERSION / # AZP_URL / # AZP_TOKEN # AZP_AGENT_NAME # AZP_POOL
+export AZP_AGENT_NAME=MyLinuxAgent
+export AZP_URL=https://dev.azure.com/Org-iloveck
+export AZP_TOKEN="kz25m7qamldqzzbyd3d3pgzvejgyfcozebloqse6yerbcufx4pwq"
+export AZP_POOL=MyAgentPool
+export AZP_AGENT_VERSION=$(curl -s https://api.github.com/repos/microsoft/azure-pipelines-agent/releases | jq -r '.[0].tag_name' | cut -d "v" -f 2)
+echo $AZP_AGENT_VERSION
+# Make the script executable,
+chmod u+x build-agent.sh
+sudo -E ./build-agent.sh
